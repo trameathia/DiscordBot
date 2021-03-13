@@ -53,6 +53,7 @@ namespace DiscordBot
             .AddSingleton<CommandHandler>()
             .AddSingleton<CoreService>()
             .AddSingleton<LoggingService>()
+            .AddSingleton<AudioService>()
             .AddSingleton<Random>()
             .AddSingleton(Configuration);
         }
