@@ -56,24 +56,11 @@ namespace DiscordBot
             IAudioClient client;
             if (ConnectedChannels.TryGetValue(guild.Id, out client))
             {
-                //using (var output = CreateStream(path).StandardOutput.BaseStream)
-                //using (var stream = client.CreatePCMStream(AudioApplication.Music))
-                //{
-                //    try { await output.CopyToAsync(stream); }
-                //    finally { await stream.FlushAsync().ConfigureAwait(false); }
-                //}
-
-                //var output = CreateStream(path).StandardOutput.BaseStream;
-                //var stream = client.CreatePCMStream(AudioApplication.Music);
-                //await output.CopyToAsync(stream);
-                //await stream.FlushAsync().ConfigureAwait(false);
-                using (var ffmpeg = CreateStream(path))
-                using (var output = ffmpeg.StandardOutput.BaseStream)
-                using (var discord = client.CreatePCMStream(AudioApplication.Mixed))
-                {
-                    try { await output.CopyToAsync(discord); }
-                    finally { await discord.FlushAsync(); }
-                }
+                using var ffmpeg = CreateStream(path);
+                //using var output = ffmpeg.StandardOutput.BaseStream;
+                using var discord = client.CreatePCMStream(AudioApplication.Mixed);
+                try { await ffmpeg.StandardOutput.BaseStream.CopyToAsync(discord); }
+                finally { await discord.FlushAsync(); }
             }
         }
 
