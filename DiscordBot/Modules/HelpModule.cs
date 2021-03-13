@@ -2,88 +2,122 @@
 using Discord.Commands;
 using Microsoft.Extensions.Configuration;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace DiscordBot.Modules
 {
     [Name("Help")]
+    [Summary("For Dummies")]
     public class HelpModule : ModuleBase<SocketCommandContext>
     {
-        private readonly CommandService _service;
-        private readonly IConfigurationRoot _config;
+        private readonly CommandService _CommandService;
+        private readonly IConfigurationRoot _Configuration;
 
-        public HelpModule(CommandService service, IConfigurationRoot config)
+        public HelpModule(CommandService commandService, IConfigurationRoot configuration)
         {
-            _service = service;
-            _config = config;
+            _CommandService = commandService;
+            _Configuration = configuration;
         }
 
         [Command("help")]
+        [Summary("Displays the list of commands")]
         public async Task HelpAsync()
         {
-            string prefix = _config["prefix"];
-            var builder = new EmbedBuilder()
+            string commandPrefix = _Configuration["prefix"];
+            EmbedBuilder embedBuilder = new()
             {
                 Color = new Color(114, 137, 218),
                 Description = "These are the commands you can use"
             };
 
-            foreach(var module in _service.Modules)
+            foreach (ModuleInfo module in _CommandService.Modules)
             {
-                string description = null;
-                foreach (var cmd in module.Commands)
+                StringBuilder moduleDescription = new();
+
+                foreach (CommandInfo command in module.Commands)
                 {
-                    var result = await cmd.CheckPreconditionsAsync(Context);
-                    if (result.IsSuccess)
-                        description += $"{prefix}{cmd.Aliases.First()}\n";
+                    PreconditionResult preconditionResult = await command.CheckPreconditionsAsync(Context);
+
+                    if (preconditionResult.IsSuccess)
+                    {
+                        moduleDescription.Append($"{commandPrefix}{command.Aliases[0]}");
+
+                        if (command.Parameters.Count > 0)
+                        {
+                            moduleDescription.Append($" {string.Join(' ', command.Parameters.Select(parameter => $"<{parameter.Name}>"))}");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(command.Summary))
+                        {
+                            moduleDescription.Append($" - {command.Summary}");
+                        }
+
+                        moduleDescription.Append('\n');
+                    }
                 }
 
-                if(!string.IsNullOrWhiteSpace(description))
+                if (moduleDescription.Length > 0)
                 {
-                    builder.AddField(x =>
+                    embedBuilder.AddField(field =>
                     {
-                        x.Name = module.Name;
-                        x.Value = description;
-                        x.IsInline = false;
+                        field.Name = $"{module.Name} - {module.Summary}";
+                        field.Value = moduleDescription.ToString();
+                        field.IsInline = false;
                     });
                 }
             }
 
-            await ReplyAsync("", false, builder.Build());
+            await ReplyAsync(embed: embedBuilder.Build());
         }
 
         [Command("help")]
-        public async Task HelpAsync(string command)
+        [Summary("Displays information for a specific command")]
+        public async Task HelpAsync([Summary("The command to display information for")] string command)
         {
-            var result = _service.Search(Context, command);
+            SearchResult searchResult = _CommandService.Search(Context, command);
 
-            if (!result.IsSuccess)
+            if (!searchResult.IsSuccess)
             {
-                await ReplyAsync($"Sorry, I couldn't find a command like **{command}**.");
+                await ReplyAsync($"Unable to find a command like **{command}**");
                 return;
             }
 
-            string prefix = _config["prefix"];
-            var builder = new EmbedBuilder()
+            string commandPrefix = _Configuration["prefix"];
+            EmbedBuilder embedBuilder = new()
             {
                 Color = new Color(114, 137, 218),
                 Description = $"Here are some commands like **{command}**"
             };
 
-            foreach(var match in result.Commands)
+            foreach (CommandMatch match in searchResult.Commands)
             {
-                var cmd = match.Command;
-
-                builder.AddField(x =>
+                embedBuilder.AddField(field =>
                 {
-                    x.Name = string.Join(", ", cmd.Aliases);
-                    x.Value = $"Parameters: {string.Join(", ", cmd.Parameters.Select(p => p.Name))}\n" +
-                              $"Summary: {cmd.Summary}";
-                    x.IsInline = false;
+                    field.Name = $"{commandPrefix}{match.Command.Aliases[0]}";
+                    field.Value = $"{match.Command.Summary}";
+
+                    if (match.Command.Parameters.Count > 0)
+                    {
+                        field.Name += $" {string.Join(' ', match.Command.Parameters.Select(parameter => $"<{parameter.Name}>"))}";
+                        field.Value += $"\nParameters:";
+
+                        foreach (ParameterInfo parameter in match.Command.Parameters)
+                        {
+                            field.Value += $"\n- {parameter.Name}";
+
+                            if (!string.IsNullOrWhiteSpace(parameter.Summary))
+                            {
+                                field.Value += $": {parameter.Summary}";
+                            }
+                        }
+                    }
+
+                    field.IsInline = false;
                 });
             }
 
-            await ReplyAsync("", false, builder.Build());
+            await ReplyAsync(embed: embedBuilder.Build());
         }
     }
 }
