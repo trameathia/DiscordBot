@@ -6,38 +6,43 @@ using System.Threading.Tasks;
 
 namespace DiscordBot
 {
-    class CommandHandler
+    public sealed class CommandHandler
     {
-        private readonly DiscordSocketClient _discord;
-        private readonly CommandService _commands;
-        private readonly IConfigurationRoot _config;
-        private readonly IServiceProvider _provider;
+        private readonly DiscordSocketClient _DiscordClient;
+        private readonly CommandService _CommandService;
+        private readonly IConfigurationRoot _Configuration;
+        private readonly IServiceProvider _Services;
 
-        public CommandHandler(DiscordSocketClient discord, CommandService commands, IConfigurationRoot config, IServiceProvider provider)
+        public string CommandPrefix => _Configuration["prefix"];
+
+        public CommandHandler(DiscordSocketClient discordClient, CommandService commandService, IConfigurationRoot configuration, IServiceProvider services)
         {
-            _discord = discord;
-            _commands = commands;
-            _config = config;
-            _provider = provider;
+            _DiscordClient = discordClient;
+            _CommandService = commandService;
+            _Configuration = configuration;
+            _Services = services;
 
-            _discord.MessageReceived += OnMessageReceivedAsync;
+            _DiscordClient.MessageReceived += OnMessageReceivedAsync;
         }
 
-        private async Task OnMessageReceivedAsync(SocketMessage s)
+        private async Task OnMessageReceivedAsync(SocketMessage socketMessage)
         {
-            var msg = s as SocketUserMessage;
-            if (msg == null) return;
-            if (msg.Author.Id == _discord.CurrentUser.Id) return;
-
-            var context = new SocketCommandContext(_discord, msg);
-
-            int argPos = 0;
-            if(msg.HasStringPrefix(_config["prefix"], ref argPos) || msg.HasMentionPrefix(_discord.CurrentUser, ref argPos))
+            if (socketMessage is not SocketUserMessage userMessage || userMessage.Author.Id == _DiscordClient.CurrentUser.Id)
             {
-                var result = await _commands.ExecuteAsync(context, argPos, _provider);
+                return;
+            }
 
-                if (!result.IsSuccess)
-                    await context.Channel.SendMessageAsync(result.ToString());
+            SocketCommandContext commandContext = new(_DiscordClient, userMessage);
+            int prefixIndex = 0;
+
+            if (userMessage.HasStringPrefix(CommandPrefix, ref prefixIndex) || userMessage.HasMentionPrefix(_DiscordClient.CurrentUser, ref prefixIndex))
+            {
+                IResult commandResult = await _CommandService.ExecuteAsync(commandContext, prefixIndex, _Services);
+
+                if (!commandResult.IsSuccess)
+                {
+                    await commandContext.Channel.SendMessageAsync(commandResult.ToString());
+                }
             }
         }
     }
