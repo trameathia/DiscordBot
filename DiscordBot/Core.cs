@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using DiscordBot.Modules.NumberGuessingGame;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -54,6 +55,7 @@ namespace DiscordBot
             .AddSingleton<CoreService>()
             .AddSingleton<LoggingService>()
             .AddSingleton<Random>()
+            .AddNumberGuessingGame()
             .AddSingleton(Configuration);
         }
     }
