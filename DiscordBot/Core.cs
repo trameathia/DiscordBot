@@ -8,35 +8,32 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 
-
 namespace DiscordBot
 {
-    class Core
+    public class Core
     {
         public IConfigurationRoot Configuration { get; }
+
         public Core(string[] args)
         {
-            var builder = new ConfigurationBuilder()
+            Configuration = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("_config.json");
-            Configuration = builder.Build();
+                .AddJsonFile("_config.json")
+                .Build();
         }
-        public static async Task RunAsync(string[] args)
-        {
-            var core = new Core(args);
-            await core.RunAsync();
-        }
+
+        public static async Task RunAsync(string[] args) => await new Core(args).RunAsync();
 
         public async Task RunAsync()
         {
-            var services = new ServiceCollection();
+			ServiceCollection services = new();
             ConfigureServices(services);
 
-            var provider = services.BuildServiceProvider();
-            provider.GetRequiredService<LoggingService>();
-            provider.GetRequiredService<CommandHandler>();
+			ServiceProvider serviceProvider = services.BuildServiceProvider();
+            serviceProvider.GetRequiredService<LoggingService>();
+            serviceProvider.GetRequiredService<CommandHandler>();
 
-            await provider.GetRequiredService<CoreService>().StartAsync();
+            await serviceProvider.GetRequiredService<CoreService>().StartAsync();
             await Task.Delay(-1);
         }
 
@@ -55,8 +52,6 @@ namespace DiscordBot
             .AddSingleton<CommandHandler>()
             .AddSingleton<CoreService>()
             .AddSingleton<LoggingService>()
-            .AddSingleton<AudioService>()
-            .AddSingleton<Random>()
             .AddNumberGuessingGame()
             .AddJukebox()
             .AddSingleton(Configuration);
