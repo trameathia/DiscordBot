@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace DiscordBot.Modules.Screamo
+namespace DiscordBot.Modules.Audio
 {
     [Name("Screamo")]
     [Summary("Screams and shit")]
