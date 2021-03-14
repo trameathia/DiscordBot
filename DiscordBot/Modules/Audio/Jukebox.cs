@@ -30,7 +30,7 @@ namespace DiscordBot.Modules.Audio
 		{
 			return Process.Start(new ProcessStartInfo
 			{
-				FileName = "ffmpeg.exe",
+				FileName = "ffmpeg",//won't run on linux if this is set to ffmpeg.exe - fix this you noob
 				Arguments = $"-hide_banner -loglevel panic -i - -ac 2 -f s16le -ar 48000 -",
 				UseShellExecute = false,
 				CreateNoWindow = true,
