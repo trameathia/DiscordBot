@@ -21,8 +21,8 @@ namespace DiscordBot.Tests
         {
             DiceSet diceSet = new()
             {
-                new Dice(2, 6),
-                new Dice(5, 20)
+                new Dice(2, 6, 1),
+                new Dice(5, 20, 1)
             };
             IEnumerable<(Dice Dice, List<int> Results)> rolls = diceSet.Roll();
 
