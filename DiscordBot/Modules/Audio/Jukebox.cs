@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using YoutubeExplode;
@@ -30,7 +31,7 @@ namespace DiscordBot.Modules.Audio
 		{
 			return Process.Start(new ProcessStartInfo
 			{
-				FileName = "ffmpeg",//won't run on linux if this is set to ffmpeg.exe - fix this you noob
+				FileName = $"ffmpeg{(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : string.Empty)}",
 				Arguments = $"-hide_banner -loglevel panic -i - -ac 2 -f s16le -ar 48000 -",
 				UseShellExecute = false,
 				CreateNoWindow = true,
@@ -96,10 +97,11 @@ namespace DiscordBot.Modules.Audio
 					await youtube.Videos.Streams.CopyToAsync(streamInfo, ffmpeg.StandardInput.BaseStream);
 					ffmpeg.StandardInput.BaseStream.Close();
 
-					// Wait until all output has been captured from ffmpeg
+					// Wait until all output has been captured from ffmpeg and sent to Discord
 					ffmpegOutputTask.Wait();
 
 					// By this point the song has finished playing
+					await connection.AudioClient.SetSpeakingAsync(false);
 					connection.CurrentRequest = null;
 				}
 			}
