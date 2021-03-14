@@ -27,7 +27,7 @@ namespace DiscordBot.Modules.DiceRolling
             return true;
         }
         private static bool IsValidRoll(string roll) => Regex.IsMatch(roll, @"^\d*d\d*[()+-]*\d*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        public int Add() => _add;
+        public int getAdd() => _add;
         public List<int> Roll()
         {
             List<int> rolls = new List<int>();

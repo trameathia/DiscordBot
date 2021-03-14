@@ -21,8 +21,8 @@ namespace DiscordBot.Modules.DiceRolling
             Embed results = new EmbedBuilder
             {
                 Color = new Color(230, 0, 126),
-                Title = $"Total: {rolls.Select(r => r.Results.Sum() + r.Dice.Add()).Sum()}",
-                Fields = rolls.Select(r => new EmbedFieldBuilder { Name = $"{r.Dice}: {r.Results.Sum() + r.Dice.Add()}" , Value = $"{{ {string.Join(", ", r.Results)} }}", IsInline = false }).ToList()
+                Title = $"Total: {rolls.Select(r => r.Results.Sum() + r.Dice.getAdd()).Sum()}",
+                Fields = rolls.Select(r => new EmbedFieldBuilder { Name = $"{r.Dice}: {r.Results.Sum() + r.Dice.getAdd()}" , Value = $"{{ {string.Join(", ", r.Results)} }}", IsInline = false }).ToList()
             }.Build();
 
             await ReplyAsync(embed: results);
