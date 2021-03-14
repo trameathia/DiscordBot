@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y curl build-essential \
 	&& tar -xf libsodium-1.0.18.tar.gz && tar -xf opus-1.3.1.tar.gz \
 	&& cd /source/opus-1.3.1 && ./configure && make && make install \
 	&& cd /source/libsodium-1.0.18 && ./configure && make && make install \
-	&& apt-get install libsodium23 libopus0
+	&& apt-get install -y libsodium23 libopus0 ffmpeg
 WORKDIR /app
 COPY --from=publish /app .
 ENTRYPOINT ["dotnet", "DiscordBot.dll"]
