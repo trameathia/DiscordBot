@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace DiscordBot.Modules.NumberGuessingGame
 {
-	public sealed class NumberGame : Game<NumberGameConfiguration, NumberGameResult>
+	public sealed class NumberGame : ModuleComponent<NumberGameConfiguration, NumberGameResult>
 	{
 		private readonly Dictionary<string, int> _Guesses;
 		private int _MagicNumber;

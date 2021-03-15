@@ -4,18 +4,24 @@ using System.Threading.Tasks;
 
 namespace DiscordBot.Modules
 {
-	public abstract class Game<TConfiguration, TResult> : IDisposable
-		where TConfiguration : GameConfiguration
+	public abstract class ModuleComponent<TConfiguration, TResult> : IDisposable
+		where TConfiguration : ModuleComponentConfiguration
 	{
 		private Timer _Timer;
 		private int _Ticks;
 
 		public TConfiguration Configuration { get; }
 		public bool IsRunning { get; private set; }
+		protected int TickCount => _Ticks;
 
-		protected Game(TConfiguration configuration)
+		protected ModuleComponent(TConfiguration configuration)
 		{
 			Configuration = configuration;
+
+			if (Configuration.StartOnLoad)
+			{
+				Start();
+			}
 		}
 
 		private void InternalOnTick(object state)
@@ -28,9 +34,13 @@ namespace DiscordBot.Modules
 			{
 				++_Ticks;
 
-				if (_Ticks >= Configuration.TimerTicksMax)
+				if (Configuration.TimerTicksMax > 0 && _Ticks >= Configuration.TimerTicksMax)
 				{
 					End(state);
+				}
+				else
+				{
+					OnTick();
 				}
 			}
 		}
@@ -53,9 +63,11 @@ namespace DiscordBot.Modules
 			}
 		}
 
-		protected abstract TResult BuildResult();
+		protected virtual TResult BuildResult() => default;
 
-		protected abstract void OnStart();
+		protected virtual void OnStart()
+		{
+		}
 
 		protected virtual void OnTick()
 		{
@@ -65,7 +77,7 @@ namespace DiscordBot.Modules
 		{
 		}
 
-		public bool Start(Func<TResult, Task> onEnd)
+		public bool Start(Func<TResult, Task> onEnd = null)
 		{
 			if (IsRunning)
 			{
