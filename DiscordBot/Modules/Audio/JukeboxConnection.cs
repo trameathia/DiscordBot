@@ -1,4 +1,5 @@
 ﻿using Discord.Audio;
+using System;
 using System.Collections.Concurrent;
 
 namespace DiscordBot.Modules.Audio
@@ -10,5 +11,6 @@ namespace DiscordBot.Modules.Audio
 		public ulong? CurrentChannelId { get; set; }
 		public ConcurrentQueue<JukeboxRequest> Queue { get; set; } = new ConcurrentQueue<JukeboxRequest>();
 		public JukeboxRequest CurrentRequest { get; set; }
+		public DateTime LastActivity { get; set; } = DateTime.Now;
 	}
 }

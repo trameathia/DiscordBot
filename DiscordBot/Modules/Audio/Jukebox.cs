@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using YoutubeExplode;
 using YoutubeExplode.Playlists;
@@ -16,17 +15,13 @@ using YoutubeExplode.Videos.Streams;
 
 namespace DiscordBot.Modules.Audio
 {
-	public sealed class Jukebox : IDisposable
+	public sealed class Jukebox : ModuleComponent<JukeboxConfiguration, ModuleResult>
 	{
-		private readonly JukeboxConfiguration _Configuration;
 		private readonly ConcurrentDictionary<ulong, JukeboxConnection> _Connections;
-		private Timer _Timer;
 
-		public Jukebox(JukeboxConfiguration configuration)
+		public Jukebox(JukeboxConfiguration configuration) : base(configuration)
 		{
-			_Configuration = configuration;
 			_Connections = new ConcurrentDictionary<ulong, JukeboxConnection>();
-			_Timer = new Timer(OnTimerTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(1.0));
 		}
 
 		private static Process CreateFfmpeg()
@@ -42,25 +37,11 @@ namespace DiscordBot.Modules.Audio
 			});
 		}
 
-		private void OnTimerTick(object state)
-		{
-			foreach (JukeboxConnection connection in _Connections.Values)
-			{
-				if (connection.CurrentRequest == null && connection.Queue.TryDequeue(out JukeboxRequest request))
-				{
-					HandleRequest(connection, request);
-				}
-			}
-		}
-
 		private static async Task EnsureConnectedToUsersChannel(JukeboxConnection connection, IVoiceState voiceState)
 		{
-			if (connection.AudioClient != null && connection.CurrentChannelId != voiceState.VoiceChannel.Id)
+			if (connection.CurrentChannelId != voiceState.VoiceChannel.Id)
 			{
-				await connection.AudioClient.StopAsync();
-				connection.AudioClient.Dispose();
-				connection.AudioClient = null;
-				connection.CurrentChannelId = null;
+				await DisconnectFromCurrentChannel(connection);
 			}
 
 			if (connection.AudioClient == null)
@@ -70,7 +51,17 @@ namespace DiscordBot.Modules.Audio
 			}
 		}
 
-		private async void HandleRequest(JukeboxConnection connection, JukeboxRequest request)
+		private static async Task DisconnectFromCurrentChannel(JukeboxConnection connection)
+		{
+			if (connection.AudioClient != null)
+			{
+				await connection.AudioClient.StopAsync();
+				connection.AudioClient = null;
+				connection.CurrentChannelId = null;
+			}
+		}
+
+		private static async Task HandleRequest(JukeboxConnection connection, JukeboxRequest request)
 		{
 			connection.CurrentRequest = request;
 
@@ -104,7 +95,27 @@ namespace DiscordBot.Modules.Audio
 
 					// By this point the song has finished playing
 					await connection.AudioClient.SetSpeakingAsync(false);
+					connection.LastActivity = DateTime.Now;
 					connection.CurrentRequest = null;
+				}
+			}
+		}
+
+		protected override void OnTick()
+		{
+			foreach (JukeboxConnection connection in _Connections.Values.ToList())
+			{
+				if (connection.CurrentRequest == null && connection.Queue.TryDequeue(out JukeboxRequest request))
+				{
+					// Kick off a new thread to handle the request (don't wait for it)
+					_ = HandleRequest(connection, request);
+				}
+				else if (connection.CurrentRequest == null && connection.Queue.IsEmpty && connection.LastActivity.Add(Configuration.ChannelLeaveTimeout) <= DateTime.Now)
+				{
+					// Dispose of the current connection since it is considered idle
+					_Connections.Remove(connection.ServerId, out _);
+					// Kick off a new thread to disconnect the bot from its current channel (don't wait for it)
+					_ = DisconnectFromCurrentChannel(connection);
 				}
 			}
 		}
@@ -118,9 +129,9 @@ namespace DiscordBot.Modules.Audio
 
 			JukeboxConnection connection = _Connections.GetOrAdd(serverId, new JukeboxConnection { ServerId = serverId });
 			
-			if (connection.Queue.Count >= _Configuration.QueueSizeMax)
+			if (connection.Queue.Count >= Configuration.QueueSizeMax)
 			{
-				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({_Configuration.QueueSizeMax}/{_Configuration.QueueSizeMax}).");
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({connection.Queue.Count}/{Configuration.QueueSizeMax}).");
 			}
 
 			// Try to look up the video's metadata from YouTube
@@ -155,9 +166,9 @@ namespace DiscordBot.Modules.Audio
 
 			JukeboxConnection connection = _Connections.GetOrAdd(serverId, new JukeboxConnection { ServerId = serverId });
 
-			if (connection.Queue.Count >= _Configuration.QueueSizeMax)
+			if (connection.Queue.Count >= Configuration.QueueSizeMax)
 			{
-				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({_Configuration.QueueSizeMax}/{_Configuration.QueueSizeMax}).");
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({connection.Queue.Count}/{Configuration.QueueSizeMax}).");
 			}
 
 			// Try to look up the playlist's metadata from YouTube
@@ -177,7 +188,7 @@ namespace DiscordBot.Modules.Audio
 				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The specified playlist is empty.");
 			}
 
-			if (connection.Queue.Count + playlistVideos.Count > _Configuration.QueueSizeMax)
+			if (connection.Queue.Count + playlistVideos.Count > Configuration.QueueSizeMax)
 			{
 				return ModuleResult.FromError<ModuleResult<QueueResult>>("There is not enough room in the queue for all of the songs in the playlist.");
 			}
@@ -197,15 +208,6 @@ namespace DiscordBot.Modules.Audio
 				Title = playlist.Title,
 				Duration = TimeSpan.FromSeconds(playlistVideos.Sum(videoMetadata => videoMetadata.Duration.TotalSeconds))
 			});
-		}
-
-		public void Dispose()
-		{
-			if (_Timer != null)
-			{
-				_Timer.Dispose();
-				_Timer = null;
-			}
 		}
 	}
 }

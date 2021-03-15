@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace DiscordBot.Modules.Audio
 {
@@ -8,7 +9,12 @@ namespace DiscordBot.Modules.Audio
 		{
 			return services.AddSingleton(serviceProvider => new Jukebox(new JukeboxConfiguration
 			{
-				QueueSizeMax = 50
+				TimerDelay = TimeSpan.Zero,
+				TimerInterval = TimeSpan.FromSeconds(1.0),
+				TimerTicksMax = -1,
+				StartOnLoad = true,
+				QueueSizeMax = 50,
+				ChannelLeaveTimeout = TimeSpan.FromSeconds(15.0)
 			}));
 		}
 	}

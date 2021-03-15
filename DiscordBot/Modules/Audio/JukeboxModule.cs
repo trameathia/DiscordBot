@@ -38,7 +38,7 @@ namespace DiscordBot.Modules.Audio
 				await _Jukebox.QueueSong(Context.Guild.Id, Context.User, videoId);
 
 			string replyMessage = result.Result != null ?
-				$"🎶 **Added {(isPlaylist ? "playlist" : "song")} to queue** - `{result.Result.Title}` ({result.Result.Duration:hh\\:mm\\:ss})" :
+				$"🎶 **Added {(isPlaylist ? "playlist" : "song")} to queue** - `{result.Result.Title}` *({Utility.FormatTimeSpan(result.Result.Duration)})*" :
 				string.Join("\n", result.GetErrorMessages().Select(message => message.Content));
 
 			await ReplyAsync(replyMessage);
