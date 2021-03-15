@@ -1,4 +1,6 @@
 ﻿using Discord.WebSocket;
+using YoutubeExplode.Videos;
+using YoutubeExplode.Videos.Streams;
 
 namespace DiscordBot.Modules.Audio
 {

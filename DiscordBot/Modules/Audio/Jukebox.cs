@@ -5,10 +5,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using YoutubeExplode;
+using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 
@@ -107,55 +109,94 @@ namespace DiscordBot.Modules.Audio
 			}
 		}
 
-		public bool QueueSong(ulong serverId, SocketUser socketUser, string videoId)
+		public async Task<ModuleResult<QueueResult>> QueueSong(ulong serverId, SocketUser socketUser, string videoId)
 		{
-			JukeboxConnection connection = _Connections.GetOrAdd(serverId, new JukeboxConnection { ServerId = serverId });
-
-			if (connection.Queue.Count >= _Configuration.QueueSizeMax)
+			if (string.IsNullOrWhiteSpace(videoId))
 			{
-				return false;
+				return ModuleResult.FromError<ModuleResult<QueueResult>>("Invalid URL specified.");
 			}
 
+			JukeboxConnection connection = _Connections.GetOrAdd(serverId, new JukeboxConnection { ServerId = serverId });
+			
+			if (connection.Queue.Count >= _Configuration.QueueSizeMax)
+			{
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({_Configuration.QueueSizeMax}/{_Configuration.QueueSizeMax}).");
+			}
+
+			// Try to look up the video's metadata from YouTube
+			YoutubeClient youtube = new();
+			Video videoMetadata = await youtube.Videos.GetAsync(videoId);
+
+			if (videoMetadata == null)
+			{
+				return ModuleResult.FromError<ModuleResult<QueueResult>>("Unable to retrieve metadata from the specified URL.");
+			}
+
+			// Add the song to the queue
 			connection.Queue.Enqueue(new JukeboxRequest
 			{
 				User = socketUser,
 				VideoId = videoId
 			});
-			return true;
+
+			return ModuleResult<QueueResult>.FromResult(new QueueResult
+			{
+				Title = videoMetadata.Title,
+				Duration = videoMetadata.Duration
+			});
 		}
 
-		public async Task<bool> QueuePlaylist(ulong serverId, SocketUser socketUser, string playlistId)
+		public async Task<ModuleResult<QueueResult>> QueuePlaylist(ulong serverId, SocketUser socketUser, string playlistId)
 		{
+			if (string.IsNullOrWhiteSpace(playlistId))
+			{
+				return ModuleResult.FromError<ModuleResult<QueueResult>>("Invalid URL specified.");
+			}
+
 			JukeboxConnection connection = _Connections.GetOrAdd(serverId, new JukeboxConnection { ServerId = serverId });
 
 			if (connection.Queue.Count >= _Configuration.QueueSizeMax)
 			{
-				return false;
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The queue is currently full ({_Configuration.QueueSizeMax}/{_Configuration.QueueSizeMax}).");
 			}
 
+			// Try to look up the playlist's metadata from YouTube
 			YoutubeClient youtube = new();
+			Playlist playlist = await youtube.Playlists.GetAsync(playlistId);
+
+			if (playlist == null)
+			{
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"Failed to retrieve playlist metadata.");
+			}
+
+			// Get all of the videos within the playlist
 			IReadOnlyList<Video> playlistVideos = await youtube.Playlists.GetVideosAsync(playlistId);
 
 			if (playlistVideos.Count == 0)
 			{
-				return false;
+				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The specified playlist is empty.");
 			}
 
-			foreach (Video video in playlistVideos)
+			if (connection.Queue.Count + playlistVideos.Count > _Configuration.QueueSizeMax)
 			{
-				if (connection.Queue.Count >= _Configuration.QueueSizeMax)
-				{
-					break;
-				}
+				return ModuleResult.FromError<ModuleResult<QueueResult>>("There is not enough room in the queue for all of the songs in the playlist.");
+			}
 
+			// Add each of the videos within the playlist to the queue
+			foreach (Video videoMetadata in playlistVideos)
+			{
 				connection.Queue.Enqueue(new JukeboxRequest
 				{
 					User = socketUser,
-					VideoId = video.Id
+					VideoId = videoMetadata.Id
 				});
 			}
 
-			return true;
+			return ModuleResult<QueueResult>.FromResult(new QueueResult
+			{
+				Title = playlist.Title,
+				Duration = TimeSpan.FromSeconds(playlistVideos.Sum(videoMetadata => videoMetadata.Duration.TotalSeconds))
+			});
 		}
 
 		public void Dispose()

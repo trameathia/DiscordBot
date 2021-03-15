@@ -1,6 +1,7 @@
 ﻿using Discord.Commands;
 using System;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -32,11 +33,15 @@ namespace DiscordBot.Modules.Audio
 			}
 
 			bool isPlaylist = string.IsNullOrWhiteSpace(videoId);
-			bool isQueued = isPlaylist ?
+			ModuleResult<QueueResult> result = isPlaylist ?
 				await _Jukebox.QueuePlaylist(Context.Guild.Id, Context.User, playlistId) :
-				_Jukebox.QueueSong(Context.Guild.Id, Context.User, videoId);
+				await _Jukebox.QueueSong(Context.Guild.Id, Context.User, videoId);
 
-			await ReplyAsync(isQueued ? $"{(isPlaylist ? "Playlist" : "Song")} queued." : "The queue is full!");
+			string replyMessage = result.Result != null ?
+				$"🎶 **Added {(isPlaylist ? "playlist" : "song")} to queue** - `{result.Result.Title}` ({result.Result.Duration:hh\\:mm\\:ss})" :
+				string.Join("\n", result.GetErrorMessages().Select(message => message.Content));
+
+			await ReplyAsync(replyMessage);
 		}
 	}
 }
