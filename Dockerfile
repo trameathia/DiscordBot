@@ -7,13 +7,6 @@ COPY . .
 RUN dotnet restore
 RUN dotnet build -c release --no-restore
 
-# test stage -- exposes optional entrypoint
-# target entrypoint with: docker build --target test
-FROM build AS test
-WORKDIR /source/tests
-COPY tests/ .
-ENTRYPOINT ["dotnet", "test", "--logger:trx"]
-
 FROM build AS publish
 RUN dotnet publish -c release --no-build -o /app
 
