@@ -361,4 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
 /DiscordBot/_config.json
+**/db_root_password.txt
+**/db_user_password.txt
+mariadb/data/*

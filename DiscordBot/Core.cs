@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Modules.NumberGuessingGame;
 using DiscordBot.Modules.Audio;
+using DiscordBot.Modules.TrashCommands;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -54,6 +55,7 @@ namespace DiscordBot
             .AddSingleton<LoggingService>()
             .AddNumberGuessingGame()
             .AddJukebox()
+            .AddTrash()
             .AddSingleton(Configuration);
         }
     }

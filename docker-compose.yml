@@ -1,0 +1,26 @@
+version: "3.1"
+services:
+    discordbot:
+        image: discordbot
+        container_name: discobot
+        restart: unless-stopped
+    mariadb:
+        image: mariadb:latest
+        restart: unless-stopped
+        volumes:
+            - ./mariadb/data:/var/lib/mysql
+        ports:
+            - 3306:3306
+        environment:
+            MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+            MYSQL_DATABASE: discordbot
+            MYSQL_USER: discordBot
+            MYSQL_PASSWORD_FILE: /run/secrets/db_user_password
+        secrets:
+            - db_root_password
+            - db_user_password
+secrets:
+    db_root_password:
+        file: ./mariadb/secrets/db_root_password.txt
+    db_user_password:
+        file: ./mariadb/secrets/db_user_password.txt
