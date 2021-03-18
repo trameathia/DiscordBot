@@ -6,11 +6,10 @@ services:
         restart: unless-stopped
     mariadb:
         image: mariadb:latest
+        container_name: discobot_db
         restart: unless-stopped
         volumes:
             - ./mariadb/data:/var/lib/mysql
-        ports:
-            - 3306:3306
         environment:
             MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
             MYSQL_DATABASE: discordbot
