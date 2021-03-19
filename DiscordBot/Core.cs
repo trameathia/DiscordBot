@@ -8,38 +8,36 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using System.Threading;
+using System.Reflection;
+using DiscordBot.Modules.DiceRolling;
+using DiscordBot.TypeReaders;
+using Microsoft.Extensions.Options;
 
 namespace DiscordBot
 {
-    public class Core
+    public class Core : IHostedService
     {
-        public IConfigurationRoot Configuration { get; }
+        private readonly IOptionsMonitor<DiscordBotConfiguration> _Configuration;
+        private readonly IServiceProvider _ServiceProvider;
+        private readonly DiscordSocketClient _DiscordClient;
+        private readonly CommandService _CommandService;
 
-        public Core(string[] args)
+        public Core(IOptionsMonitor<DiscordBotConfiguration> configuration, IServiceProvider serviceProvider, DiscordSocketClient discordClient, CommandService commandService)
         {
-            Configuration = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("_config.json")
-                .Build();
-        }
+            _Configuration = configuration;
+            _ServiceProvider = serviceProvider;
+            _DiscordClient = discordClient;
+            _CommandService = commandService;
 
-        public static async Task RunAsync(string[] args) => await new Core(args).RunAsync();
-
-        public async Task RunAsync()
-        {
-			ServiceCollection services = new();
-            ConfigureServices(services);
-
-			ServiceProvider serviceProvider = services.BuildServiceProvider();
-            serviceProvider.GetRequiredService<LoggingService>();
             serviceProvider.GetRequiredService<CommandHandler>();
-
-            await serviceProvider.GetRequiredService<CoreService>().StartAsync();
-            await Task.Delay(-1);
         }
 
-        private void ConfigureServices(IServiceCollection services)
+        public static void ConfigureServices(IConfiguration configuration, IServiceCollection services)
         {
+            services.Configure<DiscordBotConfiguration>(configuration);
+
             services.AddSingleton(new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Verbose,
@@ -50,13 +48,31 @@ namespace DiscordBot
                 LogLevel = LogSeverity.Verbose,
                 DefaultRunMode = RunMode.Async
             }))
-            .AddSingleton<CommandHandler>()
-            .AddSingleton<CoreService>()
             .AddSingleton<LoggingService>()
+            .AddSingleton<CommandHandler>()
             .AddNumberGuessingGame()
             .AddJukebox()
-            .AddTrash()
-            .AddSingleton(Configuration);
+            .AddTrash();
         }
-    }
+
+		public async Task StartAsync(CancellationToken cancellationToken)
+		{
+            if (string.IsNullOrWhiteSpace(_Configuration.CurrentValue.DiscordToken))
+            {
+                throw new Exception("Please enter your bot's authorization token into the `appsettings.json` file.");
+            }
+
+            await _DiscordClient.LoginAsync(TokenType.Bot, _Configuration.CurrentValue.DiscordToken);
+            await _DiscordClient.StartAsync();
+
+            _CommandService.AddTypeReader(typeof(Dice), new DiceTypeReader());
+
+            await _CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), _ServiceProvider);
+        }
+
+		public Task StopAsync(CancellationToken cancellationToken)
+		{
+            return Task.CompletedTask;
+        }
+	}
 }

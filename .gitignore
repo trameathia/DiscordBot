@@ -363,6 +363,8 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /DiscordBot/_config.json
+/DiscordBot/appsettings.json
+/DiscordBot/appsettings.Development.json
 **/db_root_password.txt
 **/db_user_password.txt
 mariadb/data/*

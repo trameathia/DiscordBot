@@ -1,26 +1,24 @@
-﻿using Discord;
-using Discord.Commands;
+﻿using Discord.Commands;
 using Discord.WebSocket;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Extensions.Options;
 using System.Threading.Tasks;
 
 namespace DiscordBot.Modules.TrashCommands
 {
-    [Name("Trash")]
+	[Name("Trash")]
     [Summary("Random Trash")]
     public class TrashModule : ModuleBase<SocketCommandContext>
     {
-        private readonly CommandHandler _CommandHandler;
+        private readonly IOptionsMonitor<DiscordBotConfiguration> _Configuration;
         private readonly Trash _Trash;
 
-        public TrashModule(CommandHandler commandHandler, Trash trash)
+        public TrashModule(IOptionsMonitor<DiscordBotConfiguration> configuration, Trash trash)
         {
-            _CommandHandler = commandHandler;
+            _Configuration = configuration;
             _Trash = trash;
         }
 
-        private async Task Said(SocketMessage socketMessage) => await _Trash.Said(socketMessage, this.Context.Client, _CommandHandler);
+        private async Task Said(SocketMessage socketMessage) => await _Trash.Said(socketMessage, this.Context.Client, _Configuration);
 
         [Command("she")]
         [Summary("That's what she said!")]

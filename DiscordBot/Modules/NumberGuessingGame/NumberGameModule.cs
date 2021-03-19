@@ -1,4 +1,5 @@
 ﻿using Discord.Commands;
+using Microsoft.Extensions.Options;
 using System.Threading.Tasks;
 
 namespace DiscordBot.Modules.NumberGuessingGame
@@ -7,12 +8,12 @@ namespace DiscordBot.Modules.NumberGuessingGame
 	[Summary("Play the number guessing game")]
 	public class NumberGameModule : ModuleBase<SocketCommandContext>
 	{
-		private readonly CommandHandler _CommandHandler;
+		private readonly IOptionsMonitor<DiscordBotConfiguration> _Configuration;
 		private readonly NumberGame _Game;
 
-		public NumberGameModule(CommandHandler commandHandler, NumberGame game)
+		public NumberGameModule(IOptionsMonitor<DiscordBotConfiguration> configuration, NumberGame game)
 		{
-			_CommandHandler = commandHandler;
+			_Configuration = configuration;
 			_Game = game;
 		}
 
@@ -27,7 +28,7 @@ namespace DiscordBot.Modules.NumberGuessingGame
 		[Command("numbergame")]
 		[Summary("Starts the number guessing game")]
 		public async Task StartGame() => await ReplyAsync(message: _Game.Start(OnGameEnd) ?
-			$"I'm thinking of a number between 1 and {_Game.Configuration.MagicNumberMax}. Can you guess what it is? You have {_Game.Configuration.TimerDelay.TotalSeconds:N0} seconds. GO! (use the {_CommandHandler.CommandPrefix}guess command)" :
+			$"I'm thinking of a number between 1 and {_Game.Configuration.MagicNumberMax}. Can you guess what it is? You have {_Game.Configuration.TimerDelay.TotalSeconds:N0} seconds. GO! (use the {_Configuration.CurrentValue.Prefix}guess command)" :
 			"The number guessing game is already in progress!");
 
 		[Command("guess")]
@@ -36,7 +37,7 @@ namespace DiscordBot.Modules.NumberGuessingGame
 		{
 			if (!_Game.IsRunning)
 			{
-				await ReplyAsync(message: $"The game has not yet been started. Start it with the {_CommandHandler.CommandPrefix}numbergame command!");
+				await ReplyAsync(message: $"The game has not yet been started. Start it with the {_Configuration.CurrentValue.Prefix}numbergame command!");
 				return;
 			}
 

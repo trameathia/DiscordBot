@@ -1,30 +1,29 @@
 ﻿using Discord;
 using Discord.Commands;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace DiscordBot.Modules
 {
-    [Name("Help")]
+	[Name("Help")]
     [Summary("For Dummies")]
     public class HelpModule : ModuleBase<SocketCommandContext>
     {
+        private readonly IOptionsMonitor<DiscordBotConfiguration> _Configuration;
         private readonly CommandService _CommandService;
-        private readonly IConfigurationRoot _Configuration;
 
-        public HelpModule(CommandService commandService, IConfigurationRoot configuration)
+        public HelpModule(IOptionsMonitor<DiscordBotConfiguration> configuration, CommandService commandService)
         {
-            _CommandService = commandService;
             _Configuration = configuration;
+            _CommandService = commandService;
         }
 
         [Command("help")]
         [Summary("Displays the list of commands")]
         public async Task HelpAsync()
         {
-            string commandPrefix = _Configuration["prefix"];
             EmbedBuilder embedBuilder = new()
             {
                 Color = new Color(114, 137, 218),
@@ -41,7 +40,7 @@ namespace DiscordBot.Modules
 
                     if (preconditionResult.IsSuccess)
                     {
-                        moduleDescription.Append($"{commandPrefix}{command.Aliases[0]}");
+                        moduleDescription.Append($"{_Configuration.CurrentValue.Prefix}{command.Aliases[0]}");
 
                         if (command.Parameters.Count > 0)
                         {
@@ -83,7 +82,6 @@ namespace DiscordBot.Modules
                 return;
             }
 
-            string commandPrefix = _Configuration["prefix"];
             EmbedBuilder embedBuilder = new()
             {
                 Color = new Color(114, 137, 218),
@@ -94,7 +92,7 @@ namespace DiscordBot.Modules
             {
                 embedBuilder.AddField(field =>
                 {
-                    field.Name = $"{commandPrefix}{match.Command.Aliases[0]}";
+                    field.Name = $"{_Configuration.CurrentValue.Prefix}{match.Command.Aliases[0]}";
                     field.Value = $"{match.Command.Summary}";
 
                     if (match.Command.Parameters.Count > 0)
