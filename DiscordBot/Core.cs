@@ -14,6 +14,7 @@ using System.Reflection;
 using DiscordBot.Modules.DiceRolling;
 using DiscordBot.TypeReaders;
 using Microsoft.Extensions.Options;
+using DiscordBot.Data;
 
 namespace DiscordBot
 {
@@ -50,6 +51,7 @@ namespace DiscordBot
             }))
             .AddSingleton<LoggingService>()
             .AddSingleton<CommandHandler>()
+            .AddDbContext<DiscordBotDbContext>()
             .AddNumberGuessingGame()
             .AddJukebox()
             .AddTrash();
