@@ -73,7 +73,7 @@ namespace DiscordBot.Modules.Audio
 			if (streamManifest != null)
 			{
 				// Get a reference to the audio-only stream from YouTube for the specified video
-				IStreamInfo streamInfo = streamManifest.GetAudioOnly().WithHighestBitrate();
+				IStreamInfo streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 
 				if (streamInfo != null)
 				{
@@ -153,7 +153,7 @@ namespace DiscordBot.Modules.Audio
 			return ModuleResult<QueueResult>.FromResult(new QueueResult
 			{
 				Title = videoMetadata.Title,
-				Duration = videoMetadata.Duration
+				Duration = videoMetadata.Duration ?? TimeSpan.Zero
 			});
 		}
 
@@ -181,20 +181,21 @@ namespace DiscordBot.Modules.Audio
 			}
 
 			// Get all of the videos within the playlist
-			IReadOnlyList<Video> playlistVideos = await youtube.Playlists.GetVideosAsync(playlistId);
+			IAsyncEnumerable<PlaylistVideo> playlistVideos = youtube.Playlists.GetVideosAsync(playlistId);
+			int playlistVideoCount = await playlistVideos.CountAsync();
 
-			if (playlistVideos.Count == 0)
+			if (playlistVideoCount == 0)
 			{
 				return ModuleResult.FromError<ModuleResult<QueueResult>>($"The specified playlist is empty.");
 			}
 
-			if (connection.Queue.Count + playlistVideos.Count > Configuration.QueueSizeMax)
+			if (connection.Queue.Count + playlistVideoCount > Configuration.QueueSizeMax)
 			{
 				return ModuleResult.FromError<ModuleResult<QueueResult>>("There is not enough room in the queue for all of the songs in the playlist.");
 			}
 
 			// Add each of the videos within the playlist to the queue
-			foreach (Video videoMetadata in playlistVideos)
+			await foreach (PlaylistVideo videoMetadata in playlistVideos)
 			{
 				connection.Queue.Enqueue(new JukeboxRequest
 				{
@@ -206,7 +207,7 @@ namespace DiscordBot.Modules.Audio
 			return ModuleResult<QueueResult>.FromResult(new QueueResult
 			{
 				Title = playlist.Title,
-				Duration = TimeSpan.FromSeconds(playlistVideos.Sum(videoMetadata => videoMetadata.Duration.TotalSeconds))
+				Duration = TimeSpan.FromSeconds(await playlistVideos.SumAsync(videoMetadata => videoMetadata.Duration?.TotalSeconds ?? 0.0))
 			});
 		}
 	}
